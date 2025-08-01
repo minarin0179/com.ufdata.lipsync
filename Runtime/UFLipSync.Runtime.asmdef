@@ -1,0 +1,8 @@
+{
+    "name": "UFLipSync.Runtime",
+    "rootNamespace": "UFLipSync",
+    "references": [],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false
+}

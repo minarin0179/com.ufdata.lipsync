@@ -1,0 +1,19 @@
+{
+  "name": "com.ufdata.lipsync",
+  "version": "1.0.0",
+  "displayName": "UF LipSync",
+  "description": "Unity package for generating lip sync animations from UFData format with VRM blend shapes support",
+  "unity": "2020.3",
+  "author": {
+    "name": "UFData Team"
+  },
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.1"
+  },
+  "keywords": ["unity", "lipsync", "vrm", "animation", "ufdata"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/username/uf-lipsync.git"
+  },
+  "license": "MIT"
+}
