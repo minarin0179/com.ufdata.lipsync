@@ -5,7 +5,7 @@
   "description": "Unity package for generating lip sync animations from UFData format with VRM blend shapes support",
   "unity": "2020.3",
   "author": {
-    "name": "UFData Team"
+    "name": "minarin0179"
   },
   "dependencies": {
     "com.unity.nuget.newtonsoft-json": "3.2.1"
