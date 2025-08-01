@@ -45,28 +45,22 @@ namespace UtaformatixData.Editor
         /// <returns>検出結果</returns>
         public static BlendShapeDetectionResult DetectLipSyncBlendShapes(GameObject avatarModel)
         {
-            // UnityEngine.Debug.Log($"[AvatarBlendShapeDetector] 検出開始: {avatarModel?.name ?? "null"}");
-            
             var result = new BlendShapeDetectionResult();
 
             if (avatarModel == null)
             {
-                // UnityEngine.Debug.LogWarning("[AvatarBlendShapeDetector] avatarModelがnullです");
                 return result;
             }
 
             try
             {
                 // モデル内のSkinnedMeshRendererを取得（再帰的に全階層を検索）
-                // UnityEngine.Debug.Log("[AvatarBlendShapeDetector] SkinnedMeshRenderer取得中...");
                 SkinnedMeshRenderer[] renderers = avatarModel.GetComponentsInChildren<SkinnedMeshRenderer>()
                     .Where(r => r.sharedMesh != null && r.sharedMesh.blendShapeCount > 0)
                     .ToArray();
-
-                // UnityEngine.Debug.Log($"[AvatarBlendShapeDetector] 見つかったRenderer数: {renderers.Length}");
                 result.AvailableRenderers = renderers;
 
-                // より効率的な検索: 顔関連オブジェクトを優先し、完全マッチを最優先
+                // 効率的な検索: 顔関連オブジェクトを優先し、スコアベースで最適解を選択
                 var bestMapping = new Dictionary<LipShape, string>();
                 var bestPath = "";
                 var bestScore = 0;
@@ -78,61 +72,52 @@ namespace UtaformatixData.Editor
                 {
                     try
                     {
-                        // UnityEngine.Debug.Log($"[AvatarBlendShapeDetector] Renderer処理中: {renderer.gameObject.name}");
-                        
                         List<string> blendShapeNames = GetBlendShapeNames(renderer);
                         Dictionary<LipShape, string> foundMappings = FindBlendShapeMappings(blendShapeNames);
 
-                        // UnityEngine.Debug.Log($"[AvatarBlendShapeDetector] 見つかったマッピング数: {foundMappings.Count}");
-
                         if (foundMappings.Count > 0)
                         {
-                            // スコア計算: マッピング数 + 顔関連オブジェクトボーナス + 階層の浅さボーナス
-                            int score = foundMappings.Count * 10;
+                            // スコア計算（重要度順）
+                            int score = foundMappings.Count * 10; // 基本スコア
                             
-                            // 顔関連オブジェクト名が含まれる場合はボーナス
+                            // 全音素揃いボーナス（最優先）
+                            if (foundMappings.Count == _avatarBlendShapePatterns.Count)
+                            {
+                                score += 50;
+                            }
+                            
+                            // 顔関連オブジェクトボーナス
                             string objName = renderer.gameObject.name.ToLower();
                             if (faceObjectPatterns.Any(pattern => objName.Contains(pattern.ToLower())))
                             {
                                 score += 20;
                             }
                             
-                            // 階層が浅いほどボーナス（より直接的なアクセス）
+                            // 階層の浅さボーナス
                             int depth = GetObjectDepth(renderer.gameObject, avatarModel);
                             score += Math.Max(0, 10 - depth);
-
-                            // 全ての音素が揃っている場合は大きなボーナス
-                            if (foundMappings.Count == _avatarBlendShapePatterns.Count)
-                            {
-                                score += 50;
-                            }
-
-                            // UnityEngine.Debug.Log($"[AvatarBlendShapeDetector] スコア: {score}");
 
                             if (score > bestScore)
                             {
                                 bestMapping = foundMappings;
                                 bestPath = GetGameObjectPath(renderer.gameObject, avatarModel);
                                 bestScore = score;
-                                // UnityEngine.Debug.Log($"[AvatarBlendShapeDetector] 新しいベスト: {bestPath}");
                             }
                         }
                     }
                     catch (Exception ex)
                     {
-                        // UnityEngine.Debug.LogError($"[AvatarBlendShapeDetector] Renderer処理エラー: {ex.Message}");
+                        UnityEngine.Debug.LogError($"[AvatarBlendShapeDetector] Renderer処理エラー: {ex.Message}");
                     }
                 }
 
                 result.DetectedBlendShapes = bestMapping;
                 result.TargetPath = bestPath;
-
-                // UnityEngine.Debug.Log($"[AvatarBlendShapeDetector] 検出完了. 最終マッピング数: {bestMapping.Count}");
                 return result;
             }
             catch (Exception ex)
             {
-                // UnityEngine.Debug.LogError($"[AvatarBlendShapeDetector] 検出処理でエラー: {ex.Message}");
+                UnityEngine.Debug.LogError($"[AvatarBlendShapeDetector] 検出処理でエラー: {ex.Message}");
                 return result;
             }
         }
@@ -167,7 +152,7 @@ namespace UtaformatixData.Editor
             {
                 var possibleNames = _avatarBlendShapePatterns[vowel];
 
-                // 汎用的なパターンマッチング（完全一致、末尾一致、正規表現）
+                // 多段階パターンマッチング（完全一致→末尾一致→部分一致）
                 foreach (var pattern in possibleNames)
                 {
                     var foundName = FindBlendShapeByPattern(blendShapeNames, pattern);
@@ -185,17 +170,14 @@ namespace UtaformatixData.Editor
         }
 
         /// <summary>
-        /// 汎用的なBlendShape名パターンマッチング
+        /// 多段階BlendShape名パターンマッチング（完全一致→末尾一致→部分一致）
         /// </summary>
         private static string FindBlendShapeByPattern(List<string> blendShapeNames, string pattern)
         {
             try
             {
-                // UnityEngine.Debug.Log($"[BlendShape検索] パターン: '{pattern}' で検索中...");
-
                 if (string.IsNullOrEmpty(pattern) || blendShapeNames == null || blendShapeNames.Count == 0)
                 {
-                    // UnityEngine.Debug.Log("[BlendShape検索] パターンまたはBlendShape名リストが無効");
                     return null;
                 }
 
@@ -205,7 +187,6 @@ namespace UtaformatixData.Editor
 
                 if (!string.IsNullOrEmpty(foundName))
                 {
-                    // UnityEngine.Debug.Log($"[BlendShape検索] 完全一致で発見: '{foundName}'");
                     return foundName;
                 }
 
@@ -218,26 +199,23 @@ namespace UtaformatixData.Editor
 
                 if (!string.IsNullOrEmpty(foundName))
                 {
-                    // UnityEngine.Debug.Log($"[BlendShape検索] 末尾一致で発見: '{foundName}'");
                     return foundName;
                 }
 
-                // 3. より安全な部分一致（正規表現を使わない）
+                // 3. 部分一致
                 foundName = blendShapeNames.FirstOrDefault(name =>
                     name.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0);
 
                 if (!string.IsNullOrEmpty(foundName))
                 {
-                    // UnityEngine.Debug.Log($"[BlendShape検索] 部分一致で発見: '{foundName}'");
                     return foundName;
                 }
 
-                // UnityEngine.Debug.Log($"[BlendShape検索] パターン '{pattern}' は見つかりませんでした");
                 return null;
             }
             catch (Exception ex)
             {
-                // UnityEngine.Debug.LogError($"[BlendShape検索] エラー発生: {ex.Message}");
+                UnityEngine.Debug.LogError($"[BlendShape検索] エラー発生: {ex.Message}");
                 return null;
             }
         }

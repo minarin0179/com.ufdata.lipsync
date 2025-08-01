@@ -172,7 +172,7 @@ namespace UtaformatixData.Editor.LipSync
         {
             if (string.IsNullOrEmpty(_targetFacePath))
             {
-                EditorUtility.DisplayDialog("エラー", "VRMモデルから音素BlendShapeを自動検出できませんでした。手動で対象フェイスパスを指定してください。", "OK");
+                EditorUtility.DisplayDialog("エラー", "アバターモデルから音素BlendShapeを自動検出できませんでした。手動で対象フェイスパスを指定してください。", "OK");
                 return false;
             }
 

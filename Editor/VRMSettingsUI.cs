@@ -6,7 +6,7 @@ using UtaformatixData.Models;
 namespace UtaformatixData.Editor.LipSync
 {
     /// <summary>
-    /// VRMモデル設定とBlendShape検出結果表示を担当
+    /// アバターモデル設定とBlendShape検出結果表示を担当
     /// </summary>
     public class VRMSettingsUI
     {
@@ -32,7 +32,7 @@ namespace UtaformatixData.Editor.LipSync
         {
             _settings = settings;
 
-            // Initialize時にVRMモデルが既に設定されている場合は自動検出を実行
+            // Initialize時にアバターモデルが既に設定されている場合は自動検出を実行
             if (_settings.VrmModel != null)
             {
                 // EditorApplication.delayCallを使用してGUIループを回避
@@ -52,10 +52,10 @@ namespace UtaformatixData.Editor.LipSync
                 return;
             }
 
-            EditorGUILayout.LabelField("VRMモデル設定", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("アバターモデル設定", EditorStyles.boldLabel);
 
             var newVrmModel = (GameObject)EditorGUILayout.ObjectField(
-                new GUIContent("VRMモデル", "VRMモデルのPrefabまたはシーン内のGameObjectを選択"),
+                new GUIContent("アバターモデル", "VRM、Unitychan、VRChatアバターなどのPrefabまたはシーン内のGameObjectを選択"),
                 _settings.VrmModel,
                 typeof(GameObject),
                 true
@@ -65,7 +65,7 @@ namespace UtaformatixData.Editor.LipSync
             {
                 _settings.VrmModel = newVrmModel;
                 
-                // VRMモデルがアタッチされたタイミングで自動検出を実行
+                // アバターモデルがアタッチされたタイミングで自動検出を実行
                 if (newVrmModel != null)
                 {
                     // EditorApplication.delayCallを使用してGUIループを回避
@@ -153,86 +153,20 @@ namespace UtaformatixData.Editor.LipSync
             }
             else
             {
-                // 失敗時は手動選択を初期化するが設定変更は行わない
+                // 失敗時は手動選択を初期化
                 _manualSelector.InitializeManualSelection();
-                // _settings.UseManualBlendShapeSelection = true;
-                // _settings.SaveSettings();
             }
-        }
-
-        private void DrawBlendShapeDetectionResults()
-        {
-            if (_detectionResult.HasValidMappings)
-            {
-                EditorGUILayout.LabelField($"対象パス: {_detectionResult.TargetPath}", EditorStyles.miniBoldLabel);
-
-                EditorGUILayout.LabelField("検出されたマッピング:", EditorStyles.miniBoldLabel);
-                EditorGUI.indentLevel++;
-                foreach (var mapping in _detectionResult.DetectedBlendShapes)
-                {
-                    EditorGUILayout.LabelField($"{mapping.Key}: {mapping.Value}");
-                }
-                EditorGUI.indentLevel--;
-            }
-            else
-            {
-                EditorGUILayout.HelpBox("音素に対応するBlendShapeが見つかりませんでした。手動設定で対応してください。", MessageType.Warning);
-
-                EditorGUILayout.Space();
-                _manualSelector.Draw();
-
-                // 手動設定の変更を保存
-                var manualMapping = _manualSelector.VowelToBlendShape;
-                if (manualMapping != null)
-                {
-                    _settings.SetManualBlendShapeMapping(manualMapping);
-                    _settings.TargetFacePath = _manualSelector.TargetFacePath ?? "Face";
-                    _settings.SaveSettings();
-                }
-
-                if (GUILayout.Button("詳細情報を表示", GUILayout.Height(20)))
-                {
-                    ShowDetailedBlendShapeInfo();
-                }
-            }
-        }
-
-        private void ShowDetailedBlendShapeInfo()
-        {
-            if (_settings?.VrmModel == null) return;
-
-            List<AvatarBlendShapeDetector.RendererInfo> detailedInfo = AvatarBlendShapeDetector.GetDetailedBlendShapeInfo(_settings.VrmModel);
-            Dictionary<LipShape, string[]> supportedPatterns = AvatarBlendShapeDetector.GetSupportedPatterns();
-
-            var message = "=== VRMモデル BlendShape 詳細情報 ===\n\n";
-
-            foreach (AvatarBlendShapeDetector.RendererInfo info in detailedInfo)
-            {
-                message += $"パス: {info.Path}\n";
-                message += $"BlendShape数: {info.BlendShapeCount}\n";
-                message += $"検出された音素: {info.DetectedVowelCount}\n";
-                message += $"BlendShape名: {string.Join(", ", info.BlendShapeNames)}\n\n";
-            }
-
-            message += "=== サポートされるパターン ===\n";
-            foreach (var pattern in supportedPatterns)
-            {
-                message += $"{pattern.Key}: {string.Join(", ", pattern.Value)}\n";
-            }
-
-            Debug.Log(message);
-            EditorUtility.DisplayDialog("BlendShape詳細情報", "コンソールに詳細情報を出力しました。", "OK");
         }
 
         public bool ValidateInputs()
         {
             if (_settings?.VrmModel == null)
             {
-                EditorUtility.DisplayDialog("エラー", "VRMモデルを選択してください。", "OK");
+                EditorUtility.DisplayDialog("エラー", "アバターモデルを選択してください。", "OK");
                 return false;
             }
 
-            // VRMモデルが選択されているが自動検出に失敗した場合は手動設定を確認
+            // アバターモデルが選択されているが自動検出に失敗した場合は手動設定を確認
             if (_detectionResult == null || !_detectionResult.HasValidMappings)
             {
                 return _manualSelector.ValidateInputs();
