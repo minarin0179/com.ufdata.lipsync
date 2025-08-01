@@ -23,7 +23,7 @@ namespace UtaformatixData.Editor.LipSync
             public Dictionary<LipShape, string> VowelToBlendShape;
         }
 
-        public void GenerateAnimation(UFData ufData, int trackIndex, string[] trackNames, string jsonFileName, AnimationSettings settings)
+        public void GenerateAnimation(UFData ufData, int trackIndex, string[] trackNames, string jsonFileName, string modelName, AnimationSettings settings)
         {
             try
             {
@@ -31,7 +31,7 @@ namespace UtaformatixData.Editor.LipSync
                 var lyricsTiming = GetLyricsTiming(ufData, trackIndex);
 
                 EditorUtility.DisplayProgressBar("リップシンク生成", "アニメーションクリップを作成中...", 0.5f);
-                var animClip = GetOrCreateAnimationClip(trackNames, trackIndex, jsonFileName, settings.OutputPath);
+                var animClip = GetOrCreateAnimationClip(trackNames, trackIndex, jsonFileName, modelName, settings.OutputPath);
 
                 EditorUtility.DisplayProgressBar("リップシンク生成", "BlendShapeアニメーションを生成中...", 0.7f);
                 GenerateBlendShapeAnimation(animClip.clip, lyricsTiming, settings);
@@ -54,10 +54,10 @@ namespace UtaformatixData.Editor.LipSync
             return calc.GetLyricsWithTiming(trackIndex);
         }
 
-        private (AnimationClip clip, bool isNew, string path) GetOrCreateAnimationClip(string[] trackNames, int trackIndex, string jsonFileName, string outputPath)
+        private (AnimationClip clip, bool isNew, string path) GetOrCreateAnimationClip(string[] trackNames, int trackIndex, string jsonFileName, string modelName, string outputPath)
         {
             var trackSuffix = trackNames.Length > 0 ? $"_Track{trackIndex}" : "";
-            var fileName = $"LipSync_{jsonFileName}{trackSuffix}.anim";
+            var fileName = $"LipSync_{modelName}_{jsonFileName}{trackSuffix}.anim";
             var assetPath = $"{outputPath}/{fileName}";
 
             AnimationClip existingClip = AssetDatabase.LoadAssetAtPath<AnimationClip>(assetPath);
@@ -66,7 +66,7 @@ namespace UtaformatixData.Editor.LipSync
             AnimationClip animClip;
             if (isNewClip)
             {
-                animClip = new AnimationClip { name = "LipSyncAnimation" };
+                animClip = new AnimationClip { name = $"LipSyncAnimation_{modelName}" };
             }
             else
             {

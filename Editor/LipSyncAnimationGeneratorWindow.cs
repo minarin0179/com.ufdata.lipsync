@@ -176,11 +176,13 @@ namespace UtaformatixData.Editor
                     VowelToBlendShape = _vrmSettings.VowelToBlendShape
                 };
 
+                var modelName = _vrmSettings.VrmModel.name;
                 _animationService.GenerateAnimation(
                     ufData,
                     _basicSettings.SelectedTrackIndex,
                     _basicSettings.TrackNames,
                     _basicSettings.JsonFile.name,
+                    modelName,
                     settings
                 );
             }
