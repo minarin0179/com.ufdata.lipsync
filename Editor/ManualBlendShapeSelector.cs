@@ -33,7 +33,12 @@ namespace UtaformatixData.Editor.LipSync
 
             if (_availableBlendShapeNames.Length > 0)
             {
-                foreach (LipShape vowel in (LipShape[])System.Enum.GetValues(typeof(LipShape)))
+                // Nを除外した母音のみ表示
+                var displayVowels = ((LipShape[])System.Enum.GetValues(typeof(LipShape)))
+                    .Where(vowel => vowel != LipShape.N)
+                    .ToArray();
+
+                foreach (LipShape vowel in displayVowels)
                 {
                     if (!_manualBlendShapeIndices.ContainsKey(vowel))
                     {
@@ -60,7 +65,7 @@ namespace UtaformatixData.Editor.LipSync
             }
         }
 
-        public void PrepareAvailableBlendShapes(List<VRMBlendShapeDetector.RendererInfo> detailedInfo)
+        public void PrepareAvailableBlendShapes(List<AvatarBlendShapeDetector.RendererInfo> detailedInfo)
         {
             var allBlendShapes = new HashSet<string> { "なし" }; // "なし"を最初に追加
 
@@ -85,10 +90,67 @@ namespace UtaformatixData.Editor.LipSync
         public void InitializeManualSelection()
         {
             _manualBlendShapeIndices.Clear();
-            foreach (LipShape vowel in (LipShape[])System.Enum.GetValues(typeof(LipShape)))
+            // Nを除外した母音のみ初期化
+            var displayVowels = ((LipShape[])System.Enum.GetValues(typeof(LipShape)))
+                .Where(vowel => vowel != LipShape.N);
+            
+            foreach (LipShape vowel in displayVowels)
             {
                 _manualBlendShapeIndices[vowel] = 0; // 0 = "なし"
             }
+            UpdateManualMapping();
+        }
+
+        /// <summary>
+        /// 検出結果をデフォルト選択として設定
+        /// </summary>
+        public void SetDetectionResults(Dictionary<LipShape, string> detectedBlendShapes, string targetFacePath = null)
+        {
+            if (detectedBlendShapes == null || _availableBlendShapeNames.Length == 0)
+            {
+                InitializeManualSelection();
+                return;
+            }
+
+            // 対象フェイスパスが指定されている場合は設定
+            if (!string.IsNullOrEmpty(targetFacePath))
+            {
+                _targetFacePath = targetFacePath;
+            }
+
+            _manualBlendShapeIndices.Clear();
+            
+            // Nを除外した母音のみ処理
+            var displayVowels = ((LipShape[])System.Enum.GetValues(typeof(LipShape)))
+                .Where(vowel => vowel != LipShape.N);
+            
+            foreach (LipShape vowel in displayVowels)
+            {
+                int selectedIndex = 0; // デフォルトは "なし"
+                
+                if (detectedBlendShapes.ContainsKey(vowel))
+                {
+                    string detectedBlendShape = detectedBlendShapes[vowel];
+                    
+                    // blendShape.プレフィックスを除去して検索
+                    string searchName = detectedBlendShape.StartsWith("blendShape.") 
+                        ? detectedBlendShape.Substring("blendShape.".Length) 
+                        : detectedBlendShape;
+                    
+                    // 利用可能なBlendShape名から該当するものを探す
+                    for (int i = 0; i < _availableBlendShapeNames.Length; i++)
+                    {
+                        if (_availableBlendShapeNames[i] == searchName)
+                        {
+                            selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+                
+                _manualBlendShapeIndices[vowel] = selectedIndex;
+            }
+            
             UpdateManualMapping();
         }
 

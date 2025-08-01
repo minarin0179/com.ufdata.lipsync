@@ -28,17 +28,30 @@ namespace UtaformatixData.Editor
 
         private void OnEnable()
         {
+            // Debug.Log("[LipSyncAnimationGeneratorWindow] OnEnable開始");
+            
+            // ステップ1: 設定読み込み（完了）
             LoadOrCreateSettings();
-
+            // Debug.Log("[LipSyncAnimationGeneratorWindow] Settings読み込み完了");
+            
+            // ステップ2: UIコンポーネント作成のみ復元
             _basicSettings = new BasicSettingsUI();
             _vrmSettings = new VRMSettingsUI();
             _advancedSettings = new AdvancedSettingsUI();
             _animationService = new LipSyncAnimationService();
+            // Debug.Log("[LipSyncAnimationGeneratorWindow] UIコンポーネント作成完了");
 
-            // 各UIコンポーネントに設定を渡す
+            // ステップ3: Initialize呼び出しを復元（VRMSettings以外）
             _basicSettings.Initialize(_settings);
-            _vrmSettings.Initialize(_settings);
+            // Debug.Log("[LipSyncAnimationGeneratorWindow] BasicSettings初期化完了");
+            
             _advancedSettings.Initialize(_settings);
+            // Debug.Log("[LipSyncAnimationGeneratorWindow] AdvancedSettings初期化完了");
+            
+            _vrmSettings.Initialize(_settings);
+            // Debug.Log("[LipSyncAnimationGeneratorWindow] VRMSettings初期化完了");
+            
+            // Debug.Log("[LipSyncAnimationGeneratorWindow] OnEnable完了");
         }
 
         private void LoadOrCreateSettings()
@@ -64,15 +77,34 @@ namespace UtaformatixData.Editor
 
         private void OnGUI()
         {
+            // Debug.Log("[LipSyncAnimationGeneratorWindow] OnGUI呼び出し");
+            
+            // UI描画を復元
             _scrollPosition = EditorGUILayout.BeginScrollView(_scrollPosition);
 
+            // Debug.Log("[OnGUI] DrawHeader開始");
             DrawHeader();
+            // Debug.Log("[OnGUI] DrawHeader完了");
+            
+            // Debug.Log("[OnGUI] BasicSettings.Draw開始");
             _basicSettings.Draw();
+            // Debug.Log("[OnGUI] BasicSettings.Draw完了");
+            
+            // Debug.Log("[OnGUI] VRMSettings.Draw開始");
             _vrmSettings.Draw();
+            // Debug.Log("[OnGUI] VRMSettings.Draw完了");
+            
+            // Debug.Log("[OnGUI] AdvancedSettings.Draw開始");
             _advancedSettings.Draw();
+            // Debug.Log("[OnGUI] AdvancedSettings.Draw完了");
+            
+            // Debug.Log("[OnGUI] DrawGenerateButton開始");
             DrawGenerateButton();
+            // Debug.Log("[OnGUI] DrawGenerateButton完了");
 
             EditorGUILayout.EndScrollView();
+            
+            // Debug.Log("[LipSyncAnimationGeneratorWindow] OnGUI完了");
         }
 
         private void DrawHeader()

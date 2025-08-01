@@ -10,12 +10,12 @@ namespace UtaformatixData.Editor.LipSync
     /// </summary>
     public class VRMSettingsUI
     {
-        private VRMBlendShapeDetector.BlendShapeDetectionResult _detectionResult;
+        private AvatarBlendShapeDetector.BlendShapeDetectionResult _detectionResult;
         private ManualBlendShapeSelector _manualSelector;
         private LipSyncGeneratorSettings _settings;
 
         public GameObject VrmModel => _settings?.VrmModel;
-        public VRMBlendShapeDetector.BlendShapeDetectionResult DetectionResult => _detectionResult;
+        public AvatarBlendShapeDetector.BlendShapeDetectionResult DetectionResult => _detectionResult;
         public string TargetFacePath => _detectionResult?.HasValidMappings == true
             ? _detectionResult.TargetPath
             : _settings?.TargetFacePath ?? "Face";
@@ -32,10 +32,16 @@ namespace UtaformatixData.Editor.LipSync
         {
             _settings = settings;
 
-            // 保存された設定から復元
+            // Initialize時にVRMモデルが既に設定されている場合は自動検出を実行
             if (_settings.VrmModel != null)
             {
-                AnalyzeVrmModel();
+                // EditorApplication.delayCallを使用してGUIループを回避
+                EditorApplication.delayCall += () => {
+                    if (_settings?.VrmModel != null)
+                    {
+                        AnalyzeVrmModel();
+                    }
+                };
             }
         }
 
@@ -58,13 +64,61 @@ namespace UtaformatixData.Editor.LipSync
             if (newVrmModel != _settings.VrmModel)
             {
                 _settings.VrmModel = newVrmModel;
-                _settings.SaveSettings();
-                AnalyzeVrmModel();
+                
+                // VRMモデルがアタッチされたタイミングで自動検出を実行
+                if (newVrmModel != null)
+                {
+                    // EditorApplication.delayCallを使用してGUIループを回避
+                    EditorApplication.delayCall += () => {
+                        if (_settings.VrmModel == newVrmModel)  // モデルが変更されていないか確認
+                        {
+                            AnalyzeVrmModel();
+                        }
+                    };
+                }
+                else
+                {
+                    _detectionResult = null;
+                }
             }
 
-            if (_settings.VrmModel != null && _detectionResult != null)
+            if (_settings.VrmModel != null)
             {
-                DrawBlendShapeDetectionResults();
+                if (_detectionResult == null)
+                {
+                    EditorGUILayout.Space();
+                    EditorGUILayout.HelpBox("BlendShapeを自動検出中...", MessageType.Info);
+                    
+                    // 手動検出ボタンも表示（念のため）
+                    if (GUILayout.Button("手動で再検出", GUILayout.Height(20)))
+                    {
+                        AnalyzeVrmModel();
+                    }
+                }
+                else
+                {
+                    // 検出結果に関係なく、常にプルダウンメニューを表示
+                    EditorGUILayout.Space();
+                    
+                    if (_detectionResult.HasValidMappings)
+                    {
+                        EditorGUILayout.HelpBox($"自動検出成功！{_detectionResult.DetectedBlendShapes.Count}個のBlendShapeを検出しました。", MessageType.Info);
+                    }
+                    else
+                    {
+                        EditorGUILayout.HelpBox("自動検出に失敗しました。手動でBlendShapeを選択してください。", MessageType.Warning);
+                    }
+                    
+                    if (GUILayout.Button("再検出", GUILayout.Height(20)))
+                    {
+                        AnalyzeVrmModel();
+                    }
+                    
+                    EditorGUILayout.Space();
+                    
+                    // 常にプルダウンメニューを表示
+                    _manualSelector.Draw();
+                }
             }
 
             EditorGUILayout.Space();
@@ -79,32 +133,30 @@ namespace UtaformatixData.Editor.LipSync
                 return;
             }
 
-            _detectionResult = VRMBlendShapeDetector.DetectLipSyncBlendShapes(_settings.VrmModel);
+            _detectionResult = AvatarBlendShapeDetector.DetectLipSyncBlendShapes(_settings.VrmModel);
 
-            // デバッグ用：すべてのBlendShape名をログ出力
-            List<VRMBlendShapeDetector.RendererInfo> detailedInfo = VRMBlendShapeDetector.GetDetailedBlendShapeInfo(_settings.VrmModel);
-            foreach (var info in detailedInfo)
-            {
-                Debug.Log($"[VRM BlendShape Debug] パス: {info.Path}");
-                Debug.Log($"[VRM BlendShape Debug] BlendShape名: {string.Join(", ", info.BlendShapeNames)}");
-            }
+            // Debug.Log("[VRMSettingsUI] DetectLipSyncBlendShapes完了");
 
-            // 手動選択用のBlendShape名リストを準備
+            // 詳細情報を取得（手動選択用）
+            List<AvatarBlendShapeDetector.RendererInfo> detailedInfo = AvatarBlendShapeDetector.GetDetailedBlendShapeInfo(_settings.VrmModel);
             _manualSelector.PrepareAvailableBlendShapes(detailedInfo);
 
             if (_detectionResult.HasValidMappings)
             {
-                Debug.Log($"[LipSyncAnimationGenerator] VRMモデルから{_detectionResult.DetectedBlendShapes.Count}個のBlendShapeを検出: {_detectionResult.TargetPath}");
+                // 成功時のみ設定を更新
                 _settings.TargetFacePath = _detectionResult.TargetPath;
                 _settings.UseManualBlendShapeSelection = false;
-                _settings.SaveSettings();
+                _settings.SaveSettings(); // SaveSettings復元
+                
+                // 検出結果をマニュアルセレクターにデフォルト選択として設定（TargetFacePathも一緒に設定）
+                _manualSelector.SetDetectionResults(_detectionResult.DetectedBlendShapes, _detectionResult.TargetPath);
             }
             else
             {
-                Debug.LogWarning("[LipSyncAnimationGenerator] VRMモデルから音素に対応するBlendShapeが見つかりませんでした。");
+                // 失敗時は手動選択を初期化するが設定変更は行わない
                 _manualSelector.InitializeManualSelection();
-                _settings.UseManualBlendShapeSelection = true;
-                _settings.SaveSettings();
+                // _settings.UseManualBlendShapeSelection = true;
+                // _settings.SaveSettings();
             }
         }
 
@@ -149,12 +201,12 @@ namespace UtaformatixData.Editor.LipSync
         {
             if (_settings?.VrmModel == null) return;
 
-            List<VRMBlendShapeDetector.RendererInfo> detailedInfo = VRMBlendShapeDetector.GetDetailedBlendShapeInfo(_settings.VrmModel);
-            Dictionary<LipShape, string[]> supportedPatterns = VRMBlendShapeDetector.GetSupportedPatterns();
+            List<AvatarBlendShapeDetector.RendererInfo> detailedInfo = AvatarBlendShapeDetector.GetDetailedBlendShapeInfo(_settings.VrmModel);
+            Dictionary<LipShape, string[]> supportedPatterns = AvatarBlendShapeDetector.GetSupportedPatterns();
 
             var message = "=== VRMモデル BlendShape 詳細情報 ===\n\n";
 
-            foreach (VRMBlendShapeDetector.RendererInfo info in detailedInfo)
+            foreach (AvatarBlendShapeDetector.RendererInfo info in detailedInfo)
             {
                 message += $"パス: {info.Path}\n";
                 message += $"BlendShape数: {info.BlendShapeCount}\n";
