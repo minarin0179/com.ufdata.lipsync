@@ -118,7 +118,9 @@ namespace UtaformatixData.Editor.LipSync
                     _trackNames = _loadedUFData.Project.Tracks
                         .Select((track, index) => $"{index}: {(string.IsNullOrEmpty(track.Name) ? "Untitled" : track.Name)}")
                         .ToArray();
-                    if (_settings != null)
+                    
+                    // 保存されたトラック選択を維持。範囲外の場合のみ0にリセット
+                    if (_settings != null && _settings.SelectedTrackIndex >= _trackNames.Length)
                     {
                         _settings.SelectedTrackIndex = 0;
                         _settings.SaveSettings();

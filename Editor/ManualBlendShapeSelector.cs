@@ -15,18 +15,43 @@ namespace UtaformatixData.Editor.LipSync
         private Dictionary<LipShape, int> _manualBlendShapeIndices = new();
         private string[] _availableBlendShapeNames = new string[0];
         private Dictionary<LipShape, string> _vowelToBlendShape = new();
+        private LipSyncGeneratorSettings _settings;
 
         public string TargetFacePath => _targetFacePath;
         public Dictionary<LipShape, string> VowelToBlendShape => _vowelToBlendShape;
+
+        public void Initialize(LipSyncGeneratorSettings settings)
+        {
+            _settings = settings;
+            
+            // 保存された設定を復元
+            if (_settings != null)
+            {
+                _targetFacePath = _settings.TargetFacePath;
+                
+                // 手動BlendShapeマッピングが設定されている場合は復元
+                if (_settings.UseManualBlendShapeSelection)
+                {
+                    var savedMapping = _settings.GetManualBlendShapeMapping();
+                    RestoreManualMapping(savedMapping);
+                }
+            }
+        }
 
         public void Draw()
         {
             EditorGUILayout.LabelField("手動設定", EditorStyles.miniBoldLabel);
 
-            _targetFacePath = EditorGUILayout.TextField(
+            var newTargetFacePath = EditorGUILayout.TextField(
                 new GUIContent("対象フェイスパス", "BlendShapeを持つGameObjectへのパス (例: 'Face')"),
                 _targetFacePath
             );
+
+            if (newTargetFacePath != _targetFacePath)
+            {
+                _targetFacePath = newTargetFacePath;
+                SaveManualSettings();
+            }
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("BlendShapeマッピング", EditorStyles.miniBoldLabel);
@@ -56,6 +81,7 @@ namespace UtaformatixData.Editor.LipSync
                     {
                         _manualBlendShapeIndices[vowel] = newIndex;
                         UpdateManualMapping();
+                        SaveManualSettings();
                     }
                 }
             }
@@ -165,6 +191,69 @@ namespace UtaformatixData.Editor.LipSync
                     string selectedBlendShape = _availableBlendShapeNames[mapping.Value];
                     _vowelToBlendShape[mapping.Key] = selectedBlendShape;
                 }
+            }
+        }
+
+        private void SaveManualSettings()
+        {
+            if (_settings != null)
+            {
+                _settings.SetManualBlendShapeMapping(_vowelToBlendShape);
+                _settings.TargetFacePath = _targetFacePath;
+                _settings.UseManualBlendShapeSelection = true;
+                _settings.SaveSettings();
+            }
+        }
+
+        private void RestoreManualMapping(Dictionary<LipShape, string> savedMapping)
+        {
+            if (savedMapping == null) return;
+
+            _vowelToBlendShape.Clear();
+            _manualBlendShapeIndices.Clear();
+
+            // 保存されたマッピングを復元
+            foreach (var mapping in savedMapping)
+            {
+                if (!string.IsNullOrEmpty(mapping.Value))
+                {
+                    _vowelToBlendShape[mapping.Key] = mapping.Value;
+                }
+            }
+        }
+
+        public void RestoreManualMappingWithIndices(Dictionary<LipShape, string> savedMapping)
+        {
+            if (savedMapping == null || _availableBlendShapeNames.Length == 0) return;
+
+            _vowelToBlendShape.Clear();
+            _manualBlendShapeIndices.Clear();
+
+            // 保存されたマッピングを復元し、対応するインデックスを設定
+            var displayVowels = ((LipShape[])System.Enum.GetValues(typeof(LipShape)))
+                .Where(vowel => vowel != LipShape.N);
+
+            foreach (LipShape vowel in displayVowels)
+            {
+                int selectedIndex = 0; // デフォルトは "なし"
+
+                if (savedMapping.ContainsKey(vowel) && !string.IsNullOrEmpty(savedMapping[vowel]))
+                {
+                    string savedBlendShape = savedMapping[vowel];
+                    
+                    // 利用可能なBlendShape名から該当するものを探す
+                    for (int i = 0; i < _availableBlendShapeNames.Length; i++)
+                    {
+                        if (_availableBlendShapeNames[i] == savedBlendShape)
+                        {
+                            selectedIndex = i;
+                            _vowelToBlendShape[vowel] = savedBlendShape;
+                            break;
+                        }
+                    }
+                }
+
+                _manualBlendShapeIndices[vowel] = selectedIndex;
             }
         }
 

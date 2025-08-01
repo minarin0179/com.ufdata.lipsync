@@ -31,15 +31,16 @@ namespace UtaformatixData.Editor.LipSync
         public void Initialize(LipSyncGeneratorSettings settings)
         {
             _settings = settings;
+            _manualSelector.Initialize(_settings);
 
-            // Initialize時にアバターモデルが既に設定されている場合は自動検出を実行
+            // Initialize時は前回の設定を復元するのみ。自動検出は実行しない
             if (_settings.VrmModel != null)
             {
-                // EditorApplication.delayCallを使用してGUIループを回避
+                // 前回の設定を復元するために詳細情報を準備
                 EditorApplication.delayCall += () => {
                     if (_settings?.VrmModel != null)
                     {
-                        AnalyzeVrmModel();
+                        RestorePreviousSettings();
                     }
                 };
             }
@@ -87,10 +88,10 @@ namespace UtaformatixData.Editor.LipSync
                 if (_detectionResult == null)
                 {
                     EditorGUILayout.Space();
-                    EditorGUILayout.HelpBox("BlendShapeを自動検出中...", MessageType.Info);
+                    EditorGUILayout.HelpBox("BlendShapeを検出するにはボタンを押してください。", MessageType.Info);
                     
-                    // 手動検出ボタンも表示（念のため）
-                    if (GUILayout.Button("手動で再検出", GUILayout.Height(20)))
+                    // 手動検出ボタンを表示
+                    if (GUILayout.Button("BlendShapeを検出", GUILayout.Height(25)))
                     {
                         AnalyzeVrmModel();
                     }
@@ -124,6 +125,34 @@ namespace UtaformatixData.Editor.LipSync
             EditorGUILayout.Space();
         }
 
+        private void RestorePreviousSettings()
+        {
+            if (_settings?.VrmModel == null)
+            {
+                return;
+            }
+
+            // 詳細情報を取得（手動選択用）
+            List<AvatarBlendShapeDetector.RendererInfo> detailedInfo = AvatarBlendShapeDetector.GetDetailedBlendShapeInfo(_settings.VrmModel);
+            _manualSelector.PrepareAvailableBlendShapes(detailedInfo);
+
+            // 前回の設定に基づいて復元
+            if (_settings.UseManualBlendShapeSelection)
+            {
+                // 手動設定を復元
+                var savedMapping = _settings.GetManualBlendShapeMapping();
+                _manualSelector.RestoreManualMappingWithIndices(savedMapping);
+                
+                // 手動設定がある場合は検出結果ありとして扱う（UIに手動設定を表示するため）
+                _detectionResult = new AvatarBlendShapeDetector.BlendShapeDetectionResult();
+            }
+            else
+            {
+                // 前回の設定がない場合は、検出ボタンを表示するためnullのまま
+                _detectionResult = null;
+            }
+        }
+
         private void AnalyzeVrmModel()
         {
             if (_settings?.VrmModel == null)
@@ -146,15 +175,23 @@ namespace UtaformatixData.Editor.LipSync
                 // 成功時のみ設定を更新
                 _settings.TargetFacePath = _detectionResult.TargetPath;
                 _settings.UseManualBlendShapeSelection = false;
-                _settings.SaveSettings(); // SaveSettings復元
+                _settings.SaveSettings();
                 
-                // 検出結果をマニュアルセレクターにデフォルト選択として設定（TargetFacePathも一緒に設定）
+                // 検出結果をマニュアルセレクターにデフォルト選択として設定
                 _manualSelector.SetDetectionResults(_detectionResult.DetectedBlendShapes, _detectionResult.TargetPath);
             }
             else
             {
-                // 失敗時は手動選択を初期化
-                _manualSelector.InitializeManualSelection();
+                // 失敗時：保存された手動設定があれば復元、なければ初期化
+                if (_settings.UseManualBlendShapeSelection)
+                {
+                    var savedMapping = _settings.GetManualBlendShapeMapping();
+                    _manualSelector.RestoreManualMappingWithIndices(savedMapping);
+                }
+                else
+                {
+                    _manualSelector.InitializeManualSelection();
+                }
             }
         }
 
