@@ -13,7 +13,7 @@
   "keywords": ["unity", "lipsync", "vrm", "animation", "ufdata"],
   "repository": {
     "type": "git",
-    "url": "https://github.com/username/uf-lipsync.git"
+    "url": "https://github.com/minarin0179/com.ufdata.lipsync.git"
   },
   "license": "MIT"
 }
