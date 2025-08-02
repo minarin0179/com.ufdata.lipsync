@@ -19,7 +19,7 @@ namespace UtaformatixData.Editor
 
         private const string SETTINGS_PATH = "Assets/Editor/LipSync/LipSyncGeneratorSettings.asset";
 
-        [MenuItem("Tools/LipSync Animation Generator")]
+        [MenuItem("UFLipsync/リップシンク生成", priority = 100)]
         public static void ShowWindow()
         {
             LipSyncAnimationGeneratorWindow window = GetWindow<LipSyncAnimationGeneratorWindow>("リップシンク生成");
@@ -82,7 +82,7 @@ namespace UtaformatixData.Editor
                 fontSize = 16,
                 alignment = TextAnchor.MiddleCenter
             };
-            EditorGUILayout.LabelField("リップシンク アニメーション生成", headerStyle);
+            EditorGUILayout.LabelField("リップシンク生成", headerStyle);
             EditorGUILayout.Space();
         }
 
