@@ -13,6 +13,7 @@ namespace UtaformatixData.Editor.LipSync
         private AvatarBlendShapeDetector.BlendShapeDetectionResult _detectionResult;
         private ManualBlendShapeSelector _manualSelector;
         private LipSyncGeneratorSettings _settings;
+        private bool _isManualSettings; // 手動設定が復元されているかのフラグ
 
         public GameObject VrmModel => _settings?.VrmModel;
         public AvatarBlendShapeDetector.BlendShapeDetectionResult DetectionResult => _detectionResult;
@@ -101,7 +102,11 @@ namespace UtaformatixData.Editor.LipSync
                     // 検出結果に関係なく、常にプルダウンメニューを表示
                     EditorGUILayout.Space();
                     
-                    if (_detectionResult.HasValidMappings)
+                    if (_isManualSettings)
+                    {
+                        EditorGUILayout.HelpBox("前回の手動設定を復元しました。", MessageType.Info);
+                    }
+                    else if (_detectionResult.HasValidMappings)
                     {
                         EditorGUILayout.HelpBox($"自動検出成功！{_detectionResult.DetectedBlendShapes.Count}個のBlendShapeを検出しました。", MessageType.Info);
                     }
@@ -145,11 +150,13 @@ namespace UtaformatixData.Editor.LipSync
                 
                 // 手動設定がある場合は検出結果ありとして扱う（UIに手動設定を表示するため）
                 _detectionResult = new AvatarBlendShapeDetector.BlendShapeDetectionResult();
+                _isManualSettings = true; // 手動設定復元フラグを設定
             }
             else
             {
                 // 前回の設定がない場合は、検出ボタンを表示するためnullのまま
                 _detectionResult = null;
+                _isManualSettings = false;
             }
         }
 
@@ -159,10 +166,12 @@ namespace UtaformatixData.Editor.LipSync
             {
                 _detectionResult = null;
                 _manualSelector.ClearAvailableBlendShapes();
+                _isManualSettings = false;
                 return;
             }
 
             _detectionResult = AvatarBlendShapeDetector.DetectLipSyncBlendShapes(_settings.VrmModel);
+            _isManualSettings = false; // 自動検出実行時はフラグをリセット
 
             // Debug.Log("[VRMSettingsUI] DetectLipSyncBlendShapes完了");
 
